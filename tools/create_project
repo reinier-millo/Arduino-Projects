@@ -1,0 +1,112 @@
+#!/usr/bin/make -f
+
+#
+# \brief  Prepare Arduino project directory
+# \author Reinier Millo Sánchez
+# \date   2014-09-21
+#
+
+# Take the project name from command line
+PROJECT_NAME = $(MAKECMDGOALS)
+
+# Default values for some variables
+BASE_DIR ?= $(realpath $(dir $(MAKEFILE_LIST))/..)
+AVR_CC ?= /usr/bin/avr-gcc
+AVR_OO ?= /usr/bin/avr-objcopy
+AVR_DU ?= /usr/bin/avrdude
+AVR_CONF ?= $(BASE_DIR)/tools/avrdude.conf
+SERIAL_PORT ?= /dev/ttyUSB*
+
+# Script usage
+usage:
+	@echo
+	@echo "Tool for preparing Arduino projects"
+	@echo
+	@echo "usage:"
+	@echo
+	@echo "  create_project <project name> [AVR_CC=<compiler path>]"
+	@echo "      [AVR_OO=<objcopy path>] [AVR_DU=<avrdude path>]"
+	@echo "      [AVR_CONF=<avrdude config path>] [SERIAL_PORT=<port>]"
+	@echo
+	@echo "Default values:"
+	@echo "    AVR_CC=$(AVR_CC)"
+	@echo "    AVR_OO=$(AVR_OO)"
+	@echo "    AVR_DU=$(AVR_DU)"
+	@echo "    AVR_CONF=$(AVR_CONF)"
+	@echo "    SERIAL_PORT=$(SERIAL_PORT)"
+	@echo
+
+# Define project directory
+PROJECT_DIR = $(BASE_DIR)/projects/$(PROJECT_NAME)
+
+# Check if project directory exists
+ifneq ($(wildcard $(PROJECT_DIR)),)
+$(PROJECT_NAME):: project_dir_exists
+project_dir_exists:
+	@echo "Directory $(PROJECT_DIR) already exists."
+	@echo "Select a different project name."
+	@false
+endif
+
+# Prepare project skeleton
+$(PROJECT_NAME):: $(PROJECT_DIR)
+$(PROJECT_NAME):: $(PROJECT_DIR)/$(PROJECT_NAME).c
+$(PROJECT_NAME):: $(PROJECT_DIR)/$(PROJECT_NAME).h
+$(PROJECT_NAME):: $(PROJECT_DIR)/Makefile
+$(PROJECT_NAME)::
+	@echo 'Project "$(PROJECT_NAME)" created successfully in:'
+	@echo 
+	@echo '  $(PROJECT_DIR)'
+	@echo 
+	@echo 'To add new source files, only add the source file in the'
+	@echo 'project and add it to the C_SOURCE variable in Makefile.'
+	@echo 'In the the library directory can found some basics'
+	@echo 'implementations.'  
+	@echo 
+
+# Make the project direcotry
+$(PROJECT_DIR):
+	@mkdir -p $@
+
+# Create default source file
+$(PROJECT_DIR)/$(PROJECT_NAME).c:
+	@echo '#include "$(PROJECT_NAME).h"' > $@
+	@echo >> $@
+	@echo 'int main(void)' >> $@
+	@echo '{' >> $@
+	@echo '}' >> $@
+
+# Create default include file
+$(PROJECT_DIR)/$(PROJECT_NAME).h:
+	@echo '#ifndef $(PROJECT_NAME)_H_INCLUDED' > $@
+	@echo '#define $(PROJECT_NAME)_H_INCLUDED' >> $@
+	@echo >> $@
+	@echo '#endif // $(PROJECT_NAME)_H_INCLUDED' >> $@
+
+# Create the project Makefile
+$(PROJECT_DIR)/Makefile:: $(PROJECT_DIR)
+	@echo '# Cross-Compiler Tool' > $@
+	@echo 'AVR_CC = $(AVR_CC)' >> $@
+	@echo 'AVR_OO = $(AVR_OO)' >> $@
+	@echo 'AVR_DU = $(AVR_DU)' >> $@
+	@echo 'AVR_CONF = $(AVR_CONF)' >> $@
+	@echo >> $@
+	@echo '# Project name' >> $@
+	@echo 'PROJECT_NAME = $(PROJECT_NAME)' >> $@
+	@echo >> $@
+	@echo '# Source code files' >> $@
+	@echo 'C_SOURCE = $$(PROJECT_NAME).c' >> $@
+	@echo >> $@
+	@echo 'all:compile upload' >> $@
+	@echo >> $@
+	@echo 'compile:' >> $@
+	@echo '	$$(AVR_CC) -Os -DF_CPU=16000000UL -mmcu=atmega168 $$(C_SOURCE) -o $$(PROJECT_NAME)' >> $@
+	@echo '	$$(AVR_OO) -O ihex -R .eeprom $$(PROJECT_NAME) $$(PROJECT_NAME).hex' >> $@
+	@echo >> $@
+	@echo 'upload:' >> $@
+	@echo '	$$(AVR_DU) -C $$(AVR_CONF) -F -V -c arduino -p ATMEGA168 -P $(SERIAL_PORT) -b 19200 -U flash:w:$$(PROJECT_NAME).hex -v' >> $@
+	@echo >> $@
+	@echo 'clean:' >> $@
+	@echo '	rm $$(PROJECT_NAME)' >> $@
+	@echo '	rm *.o' >> $@
+	@echo '	rm *.hex' >> $@
