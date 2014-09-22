@@ -108,5 +108,4 @@ $(PROJECT_DIR)/Makefile:: $(PROJECT_DIR)
 	@echo >> $@
 	@echo 'clean:' >> $@
 	@echo '	rm $$(PROJECT_NAME)' >> $@
-	@echo '	rm *.o' >> $@
 	@echo '	rm *.hex' >> $@
